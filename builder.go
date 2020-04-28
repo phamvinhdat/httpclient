@@ -10,15 +10,15 @@ import (
 
 const contentTypeKey = "Content-Type"
 
-func buildHttpRequest(ctx context.Context, url, method string,
-	opt requestOption) (*http.Request, error) {
+func (c *client) buildHttpRequest(ctx context.Context, url, method string,
+	reqOpt requestOption) (*http.Request, error) {
 	var (
 		body        io.Reader
 		contentType string
 		err         error
 	)
-	if opt.bodyProvider != nil {
-		body, contentType, err = opt.bodyProvider.Provide()
+	if reqOpt.bodyProvider != nil {
+		body, contentType, err = reqOpt.bodyProvider.Provide()
 		if err != nil {
 			return nil, err
 		}
@@ -30,13 +30,15 @@ func buildHttpRequest(ctx context.Context, url, method string,
 	}
 
 	// set header
-	req.Header = opt.header
+	req.Header = c.header.Clone()  // client header
+	addHeaders(req, reqOpt.header) // request header
+
 	if len(contentType) > 0 {
 		req.Header.Set(contentTypeKey, contentType)
 	}
 
 	// set query
-	err = setQuery(req, opt.query)
+	err = setQuery(req, reqOpt.query)
 	if err != nil {
 		return nil, err
 	}
@@ -51,4 +53,12 @@ func setQuery(req *http.Request, query interface{}) error {
 	}
 	req.URL.RawQuery = v.Encode()
 	return nil
+}
+
+func addHeaders(req *http.Request, header http.Header) {
+	for key, values := range header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
 }

@@ -36,9 +36,17 @@ func (f reqOptFunc) apply(r *requestOption) {
 	f(r)
 }
 
-func WithHeader(key, value string) RequestOption {
+// WithHeader sets the header entries associated with key to the single
+// element value. It replaces any existing values associated with key. If
+// isAdding[0] == true (default is false) then It appends to any existing values
+// associated with key
+func WithHeader(key, value string, isAdding ...bool) RequestOption {
 	return reqOptFunc(func(r *requestOption) {
-		r.header.Set(key, value)
+		fn := r.header.Set
+		if isAdding != nil && isAdding[0] == true {
+			fn = r.header.Add
+		}
+		fn(key, value)
 	})
 }
 

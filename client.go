@@ -24,6 +24,7 @@ type HookFn func(ctx context.Context, reqChain Chain) (*http.Response, error)
 
 type client struct {
 	sender  Sender
+	header  http.Header
 	hookFns []HookFn
 }
 
@@ -32,6 +33,7 @@ func NewClient(opts ...ClientOption) Client {
 
 	return &client{
 		sender:  opt.sender,
+		header:  opt.header,
 		hookFns: opt.hookFns,
 	}
 }
@@ -78,7 +80,7 @@ func (c *client) execute(ctx context.Context, url, method string,
 	opt := getRequestOption(opts...)
 
 	// convert to http.Request
-	req, err := buildHttpRequest(ctx, url, method, opt)
+	req, err := c.buildHttpRequest(ctx, url, method, opt)
 	if err != nil {
 		return 0, err
 	}
