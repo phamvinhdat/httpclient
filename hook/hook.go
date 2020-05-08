@@ -36,13 +36,9 @@ func Log() httpclient.HookFn {
 	}
 }
 
-func UnmarshalResponse(target interface{},
-	unmarshaller ...Unmarshaller) httpclient.HookFn {
-	var u Unmarshaller
-	u = &jsonUnmarshaller{}
-	if unmarshaller != nil {
-		u = unmarshaller[0]
-	}
+func UnmarshalResponse(defaultTarget interface{},
+	opts ...UnmarshalOption) httpclient.HookFn {
+	opt := getUnmarshalOption(opts...)
 
 	return func(ctx context.Context,
 		reqChain httpclient.Chain) (*http.Response, error) {
@@ -50,19 +46,44 @@ func UnmarshalResponse(target interface{},
 		if err != nil {
 			return nil, err
 		}
-		var bodyBuffer bytes.Buffer
-		_, err = bodyBuffer.ReadFrom(res.Body)
-		if err != nil {
-			return nil, err
+
+		for _, uRes := range opt.unmarshalResponses {
+			if uRes.conFn(res) {
+				err = unmarshalRes(uRes.target, res, opt.unmarshaller)
+				if err != nil {
+					return nil, err
+				}
+
+				return res, nil
+			}
 		}
 
-		res.Body = ioutil.NopCloser(&bodyBuffer)
-
-		err = u.Unmarshal(bodyBuffer.Bytes(), target)
+		// handle default case
+		if defaultTarget == nil {
+			return res, nil
+		}
+		err = unmarshalRes(defaultTarget, res, opt.unmarshaller)
 		if err != nil {
 			return nil, err
 		}
 
 		return res, nil
 	}
+}
+
+func unmarshalRes(target interface{}, res *http.Response, unmarshaller Unmarshaller) error {
+	var bodyBuffer bytes.Buffer
+	_, err := bodyBuffer.ReadFrom(res.Body)
+	if err != nil {
+		return err
+	}
+
+	res.Body = ioutil.NopCloser(&bodyBuffer)
+
+	err = unmarshaller.Unmarshal(bodyBuffer.Bytes(), target)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
