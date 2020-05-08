@@ -36,6 +36,7 @@ func Log() httpclient.HookFn {
 	}
 }
 
+// UnmarshalResponse will be ignore defaultTarget if defaultTarget is nil
 func UnmarshalResponse(defaultTarget interface{},
 	opts ...UnmarshalOption) httpclient.HookFn {
 	opt := getUnmarshalOption(opts...)

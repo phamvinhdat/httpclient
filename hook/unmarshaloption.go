@@ -34,7 +34,11 @@ func WithUnmashaller(unmarshaller Unmarshaller) UnmarshalOption {
 // WithUnmarshalResponse add unmarshalResponse to unmarshalResponses
 // if more than UnmarshalConditionFn is true, only first case in unmarshalResponses
 // will be execute. Default target use when all UnmarshalConditionFns are false
-func WithUnmarshalResponse(uRes unmarshalResponse) UnmarshalOption {
+func WithUnmarshalResponse(target interface{}, conFn UnmarshalConditionFn) UnmarshalOption {
+	uRes := unmarshalResponse{
+		target: target,
+		conFn:  conFn,
+	}
 	return unmarshalOptionFn(func(opt *unmarshalOption) {
 		opt.unmarshalResponses = append(opt.unmarshalResponses, uRes)
 	})
