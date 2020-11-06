@@ -36,10 +36,10 @@ func Log() httpclient.HookFn {
 	}
 }
 
-// UnmarshalResponse will be ignore defaultTarget if defaultTarget is nil
-func UnmarshalResponse(defaultTarget interface{},
-	opts ...UnmarshalOption) httpclient.HookFn {
-	opt := getUnmarshalOption(opts...)
+// UnmarshalResponse will be unmarshal response body to target
+func UnmarshalResponse(target interface{},
+	unmarshaller ...Unmarshaller) httpclient.HookFn {
+	u := getUnmarshaller(unmarshaller...)
 
 	return func(ctx context.Context,
 		reqChain httpclient.Chain) (*http.Response, error) {
@@ -48,22 +48,10 @@ func UnmarshalResponse(defaultTarget interface{},
 			return nil, err
 		}
 
-		for _, uRes := range opt.unmarshalResponses {
-			if uRes.conFn(res) {
-				err = unmarshalRes(uRes.target, res, opt.unmarshaller)
-				if err != nil {
-					return nil, err
-				}
-
-				return res, nil
-			}
-		}
-
-		// handle default case
-		if defaultTarget == nil {
+		if target == nil {
 			return res, nil
 		}
-		err = unmarshalRes(defaultTarget, res, opt.unmarshaller)
+		err = unmarshalRes(target, res, u)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +60,16 @@ func UnmarshalResponse(defaultTarget interface{},
 	}
 }
 
-func unmarshalRes(target interface{}, res *http.Response, unmarshaller Unmarshaller) error {
+func getUnmarshaller(unmarshaller ...Unmarshaller) Unmarshaller {
+	if unmarshaller == nil || unmarshaller[0] == nil {
+		return &jsonUnmarshaller{}
+	}
+
+	return unmarshaller[0]
+}
+
+func unmarshalRes(target interface{}, res *http.Response,
+	unmarshaller Unmarshaller) error {
 	var bodyBuffer bytes.Buffer
 	_, err := bodyBuffer.ReadFrom(res.Body)
 	if err != nil {
@@ -81,6 +78,7 @@ func unmarshalRes(target interface{}, res *http.Response, unmarshaller Unmarshal
 
 	res.Body = ioutil.NopCloser(&bodyBuffer)
 
+	// unmarshall response
 	err = unmarshaller.Unmarshal(bodyBuffer.Bytes(), target)
 	if err != nil {
 		return err
