@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+//go:generate mockgen -destination=mocks/client.go -package=mocks github.com/phamvinhdat/httpclient Client
 type Client interface {
 	Get(ctx context.Context, url string, opts ...RequestOption) (int, error)
 	Head(ctx context.Context, url string, opts ...RequestOption) (int, error)
