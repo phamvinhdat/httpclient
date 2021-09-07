@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 	"os"
+	"path/filepath"
 )
 
 func NewMultiPartFile(data, files map[string]string) Provider {
@@ -23,8 +24,8 @@ func (m *multipartFileProvider) Provide() (io.Reader, string, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	for fileName, filePath := range m.files {
-		err := appendFileToForm(writer, fileName, filePath)
+	for param, filePath := range m.files {
+		err := appendFileToForm(writer, param, filePath)
 		if err != nil {
 			return nil, "", err
 		}
@@ -42,8 +43,8 @@ func (m *multipartFileProvider) Provide() (io.Reader, string, error) {
 	return body, writer.FormDataContentType(), nil
 }
 
-func appendFileToForm(writer *multipart.Writer, name, path string) error {
-	file, err := os.Open(path)
+func appendFileToForm(writer *multipart.Writer, param, filePath string) error {
+	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
@@ -51,12 +52,14 @@ func appendFileToForm(writer *multipart.Writer, name, path string) error {
 		_ = file.Close()
 	}()
 
-	var fw io.Writer
-	if fw, err = writer.CreateFormFile(name, path); err != nil {
+	fw, err := writer.CreateFormFile(param, filepath.Base(filePath))
+	if err != nil {
 		return err
 	}
+
 	if _, err = io.Copy(fw, file); err != nil {
 		return err
 	}
+
 	return nil
 }
